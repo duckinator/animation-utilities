@@ -3,20 +3,22 @@
 FILE_PATTERN_SET=false
 OUTPUT_FILE_SET=false
 GIF=false
+DEBUG=false
 
 function help() {
   echo "Usage: render [ARGS ...] file_pattern output.ext"
   echo
   echo "ARGS:"
-  echo " --loop            Loop input indefinitely until another condition stops it."
-  echo " --length=TIME     The maxmimum length. TIME is formatted as hh:mm:ss[.xxx]."
-  echo " --input-fps=FPS   FPS of the input files."
-  echo " --output-fps=FPS  FPS of the output file."
-  echo " --fps=FPS         FPS of input and output files."
-  echo "                   Overrides --input-fps and --output-fps"
-  echo " --gif             Force output to be treated as GIF."
+  echo " -loop            Loop input indefinitely until another condition stops it."
+  echo " -length=TIME     The maxmimum length. TIME is formatted as hh:mm:ss[.xxx]."
+  echo " -input-fps=FPS   FPS of the input files."
+  echo " -output-fps=FPS  FPS of the output file."
+  echo " -fps=FPS         FPS of input and output files."
+  echo "                   Overrides -input-fps and -output-fps"
+  echo " -gif             Force output to be treated as GIF."
   echo "                   Default is to check the file extension."
-  echo " --help            This."
+  echo " -help            This."
+  echo " -debug           Enable some stuff for debugging."
   echo
   echo
   echo "TODO: Clean up the following part of help()."
@@ -35,26 +37,29 @@ for ((i=1;i<=${#@};i++)); do
   VAL="$(echo $ARG | cut -d '=' -f 2)"
 
   case "$ARG" in
-#  --loop=*)
+#  -loop=*)
 #    LOOP=$VAL
 #    ;;
-  --loop)
+  -loop)
     LOOP=1
     ;;
-  --length=*)
+  -length=*)
     LENGTH=$VAL
     ;;
-  --input-fps=*)
+  -input-fps=*)
     IN_FPS=$VAL
     ;;
-  --output-fps=*)
+  -output-fps=*)
     OUT_FPS=$VAL
     ;;
-  --fps=*)
+  -fps=*)
     FPS=$VAL
     ;;
-  --gif)
+  -gif)
     GIF=true
+    ;;
+  -debug)
+    DEBUG=true
     ;;
   --help|-help|-h)
     help
@@ -78,19 +83,21 @@ for ((i=1;i<=${#@};i++)); do
   esac
 done
 
-echo "Loop:    $LOOP"
-echo "Length:  $LENGTH"
-echo "IN_FPS:  $IN_FPS"
-echo "OUT_FPS: $OUT_FPS"
-echo "FPS:     $FPS"
-echo "Input:   $FILE_PATTERN"
-echo "Output:  $OUTPUT_FILE"
+if $DEBUG; then
+  echo "Loop:    $LOOP"
+  echo "Length:  $LENGTH"
+  echo "IN_FPS:  $IN_FPS"
+  echo "OUT_FPS: $OUT_FPS"
+  echo "FPS:     $FPS"
+  echo "Input:   $FILE_PATTERN"
+  echo "Output:  $OUTPUT_FILE"
+fi
 
-# --fps should only be used if input and output have the same FPS, hence the warnings.
+# -fps should only be used if input and output have the same FPS, hence the warnings.
 if [ -n "$FPS" ]; then
-  [ -n "$IN_FPS" ] || [ -n "$OUT_FPS" ] && echo "WARNING: The --fps flag should only be used if the input and output have the same FPS."
-  [ -n "$IN_FPS"  ] && echo "WARNING: Overriding input FPS of $IN_FPS (--input-fps) with $FPS (--fps)"
-  [ -n "$OUT_FPS" ] && echo "WARNING: Overriding output FPS of $OUT_FPS (--output-fps) with $FPS (--fps)"
+  [ -n "$IN_FPS" ] || [ -n "$OUT_FPS" ] && echo "WARNING: The -fps flag should only be used if the input and output have the same FPS."
+  [ -n "$IN_FPS"  ] && echo "WARNING: Overriding input FPS of $IN_FPS (-input-fps) with $FPS (-fps)"
+  [ -n "$OUT_FPS" ] && echo "WARNING: Overriding output FPS of $OUT_FPS (-output-fps) with $FPS (-fps)"
 
   IN_FPS=$FPS
   OUT_FPS=$FPS
@@ -107,6 +114,12 @@ fi
 
 if $GIF; then
   MISC_OUT_ARGS="$MISC_OUT_ARGS -pix_fmt rgb24"
+fi
+
+
+if $DEBUG; then
+  echo ffmpeg $LOOP $LENGTH $IN_FPS -qscale 1 -f image2 -i $FILE_PATTERN -y $MISC_OUT_ARGS $OUT_FPS $OUTPUT_FILE
+  exit
 fi
 
 ffmpeg $LOOP $LENGTH $IN_FPS -qscale 1 -f image2 -i $FILE_PATTERN -y $MISC_OUT_ARGS $OUT_FPS $OUTPUT_FILE
